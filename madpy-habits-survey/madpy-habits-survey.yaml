@@ -1,0 +1,4 @@
+---
+sheet_name: madpy-habits-responses
+creds_file: madpy-service-account-key.json
+survey_url: https://docs.google.com/forms/d/e/1FAIpQLScnwwfdLN_iUNaZEyks62Y_2DO8qADWGZU0ykVoWSRcnDSkfA/viewform
