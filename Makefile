@@ -1,2 +1,2 @@
 presentation.pdf: presentation.md
-	pandoc -t beamer -o $@ $<
+	pandoc -t beamer --template theme/beamer.tex -o $@ $<

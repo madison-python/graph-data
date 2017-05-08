@@ -5,6 +5,7 @@ author: |
   PhD candidate at UW-Madison  
   @pedmistor  
   github.com/pedmiston
+theme: metropolis
 ---
 
 # What's a graph problem?
@@ -79,23 +80,25 @@ RETURN b, c
 
 ```bash
 $ brew install neo4j
-$ neo4j start  # open browser to localhost:7474
-               # login and set password
-               # record password somewhere
+$ neo4j start
+# open browser to localhost:7474
+# login and set password
+# record password somewhere
 $ export NEO4J_PASSWORD=gefilte-fish
+$ echo $NEO4J_PASSWORD > neo4j-password.txt
 ```
 
 # Getting data into Neo4j
 
 1. Enter data manually with the [`CREATE`](https://neo4j.com/docs/developer-manual/current/cypher/clauses/create/) clause.
 2. Load plaintext data with [`LOAD CSV`](https://neo4j.com/developer/guide-importing-data-and-etl/) or `neo4j-import`.
-3. Manage the data in python with [py2neo](http://py2neo.org/v3/).
+3. Manage the data in python with [`py2neo`](http://py2neo.org/v3/).
 
-# py2neo
+# py2neo.Node
 
 ```python
 from os import environ
-from py2neo import Graph, Node, Relationship
+from py2neo import Graph, Node
 
 graph = Graph(password=environ['NEO4J_PASSWORD'])
 me = Node('Person', first_name='Pierce')
@@ -105,19 +108,23 @@ graph.create(me)
 # py2neo.Relationship
 
 ```python
+from py2neo import Relationship
+
 parker = Node('Person', first_name='Parker')
 father_of = Relationship(me, 'FATHER_OF', parker)
 graph.create(father_of)
 ```
 
-# Querying
+# Graph queries
 
 ```python
 import pandas
-children = pandas.DataFrame(graph.data("""
+
+q_children = """
 MATCH (:Person {first_name: 'Pierce'}) -[:FATHER_OF]-> (child)
 RETURN child.first_name AS name
-"""))
+"""
+children = pandas.DataFrame(graph.data(q_children))
 assert len(children) == 1, 'whoops!'
 ```
 
@@ -125,11 +132,11 @@ assert len(children) == 1, 'whoops!'
 
 # Totems
 
-![](totems_game/gameplay.png)
+![](totems-game/gameplay.png)
 
 # Recipes
 
-![](totems_game/recipes.png)
+![](totems-game/recipes.png)
 
 # The Panama papers
 
