@@ -2,7 +2,6 @@
 title: Getting started with graph databases
 author: |
   Pierce Edmiston  
-  PhD candidate at UW-Madison  
   @pedmistor  
   github.com/pedmiston
 theme: metropolis
@@ -10,15 +9,26 @@ theme: metropolis
 
 # What's a graph problem?
 
+> Graphs are everywhere, they’re eating the world, and there’s no going back.
+
 ![](refs/graph_databases/social_graph.png)
+
+# Uses of graph databases
+
+- Social networks
+- Search engines
+- Geospatial data
+- Meta management
+- [Fraud detection](https://neo4j.com/graphgist/9d627127-003b-411a-b3ce-f8d3970c2afa)
+- **Investigative journalism**
+- **Research**
+- **Recommendation systems**
 
 # Graph databases
 
 ![](refs/graph_databases/cover.png)
 
 # Why use a graph database?
-
-> Graphs are everywhere, they’re eating the world, and there’s no going back.
 
 - Performance (index free adjacency)
 - Flexibility (schema-free)
@@ -27,16 +37,6 @@ theme: metropolis
 # Graph modeling
 
 ![](refs/graph_databases/twitter_graph.png)
-
-# Use cases for graph databases
-
-- Social networks
-- Geospatial data
-- Meta management
-- Fraud detection
-- **Investigative journalism**
-- **Research**
-- **Recommendation systems**
 
 # Kinds of graph databases
 
@@ -71,7 +71,8 @@ theme: metropolis
 > Find all of Jim's friends who know each other.
 
 ```
-MATCH (a:Person {name:'Jim'})-[:KNOWS]->(b)-[:KNOWS]->(c),
+MATCH (a:Person {name:'Jim'}),
+  (a)-[:KNOWS]->(b)-[:KNOWS]->(c),
   (a)-[:KNOWS]->(c)
 RETURN b, c
 ```
@@ -92,7 +93,7 @@ $ echo $NEO4J_PASSWORD > neo4j-password.txt
 
 1. Enter data manually with the [`CREATE`](https://neo4j.com/docs/developer-manual/current/cypher/clauses/create/) clause.
 2. Load plaintext data with [`LOAD CSV`](https://neo4j.com/developer/guide-importing-data-and-etl/) or `neo4j-import`.
-3. Manage the data in python with [`py2neo`](http://py2neo.org/v3/).
+3. Build the data in python with [`py2neo`](http://py2neo.org/v3/).
 
 # py2neo.Node
 
@@ -112,7 +113,7 @@ from py2neo import Relationship
 
 parker = Node('Person', first_name='Parker')
 father_of = Relationship(me, 'FATHER_OF', parker)
-graph.create(father_of)
+graph.create(father_of)  # creates parker node too
 ```
 
 # Graph queries
@@ -122,7 +123,7 @@ import pandas
 
 q_children = """
 MATCH (:Person {first_name: 'Pierce'}) -[:FATHER_OF]-> (child)
-RETURN child.first_name AS name
+RETURN child.first_name AS first_name
 """
 children = pandas.DataFrame(graph.data(q_children))
 assert len(children) == 1, 'whoops!'
