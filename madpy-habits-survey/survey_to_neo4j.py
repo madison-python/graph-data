@@ -1,50 +1,50 @@
+#!/usr/bin/env python
 from os import environ
-
 from py2neo import Graph, Node, Relationship
 import google_survey
 
 
-def create_nodes_and_relationships(question_id, node_label, relationship_label):
-    responses = 
-    nodes = {}
+class MadpyHabitsSurvey:
+    def __init__(self):
+        self.responses = google_survey.get('madpy-habits-survey.yaml')
+        self.responses.set_index('question_id', inplace=True)
 
+    def graph_survey(self):
+        screen_names = self.responses.ix['q0', ['person_id', 'response']]
+        self.pythonistas = {person_id: Node('Pythonista', screen_name=name)
+                            for _, (person_id, name) in
+                            screen_names.iterrows()}
 
-responses = google_survey.get('madpy-habits-survey.yaml')
-# Set question_id as index to allow queries like: responses.ix['q0']
-responses.set_index('question_id', inplace=True)
+        self.graph = Graph(password=environ['NEO4J_PASSWORD'])
+        for node in self.pythonistas.values():
+            self.graph.merge(node, label='Pythonista')
 
-# Create nodes for all Madpy Pythonistas
-pythonistas = {}
-screen_names = responses.ix['q0', ['person_id', 'response']]
-for _, (person_id, screen_name) in screen_names.iterrows():
-    pythonistas[person_id] = Node('Pythonista', screen_name=screen_name)
+        self._graph_responses_to_question('q1', 'Editor', 'TYPES_IN')
+        self._graph_responses_to_question('q2', 'Package', 'LIKES')
+        self._graph_responses_to_question('q3', 'VersionControl', 'USES')
+        self._graph_responses_to_question('q4', 'Language', 'KNOWS')
 
-# Create nodes for editors and relationships for editor preferences
-editors = {}
-editor_prefs = []
-editor_responses = responses.ix['q1', ['person', 'response']]
-for _, (person_id, editor) in editor_responses.iterrows():
-    pythonista = pythonistas[person_id]
-    editor = editors.setdefault(editor, Node('Editor', name=editor))
-    editor_prefs.append(Relationship(pythonista, 'TYPES_IN', editor))
+    def _graph_responses_to_question(self, question_id, node_label,
+                                     relationship_label):
 
-# Create nodes for python packages and relationships for favorites
-packages = {}
-favorites = []
-package_responses = responses.ix['q2', ['person', 'response']]
-for _, (person_id, package) in package_responses.iterrows():
-    pythonista = pythonistas[person_id]
-    package = packages.setdefault(package, Node('Package', name=package))
-    favorites.append(Relationship(pythonista, 'LOVES', package))
+        def Response(node_value):
+            return Node(node_label, name=node_value)
 
+        responses = self.responses.ix[question_id, ['person_id', 'response']]
+        response_nodes = {}  # nodes for unique responses
+        relationships = []   # relationships between people and responses
+        for _, (person_id, node_value) in responses.iterrows():
+            pythonista = self.pythonistas[person_id]
+            node = response_nodes.setdefault(node_value, Response(node_value))
+            response = Relationship(pythonista, relationship_label, node)
+            relationships.append(response)
 
-graph = Graph(password=environ['NEO4J_PASSWORD'])
+        for node in response_nodes.values():
+            self.graph.merge(node, label=node_label)
 
-for person in people.values():
-    graph.merge(person, label='Person')
+        for relationship in relationships:
+            self.graph.merge(relationship, label=node_label)
 
-for like in likes.values():
-    graph.merge(like, label='Habit')
-
-for relationship in habits:
-    graph.merge(relationship, label='Person')
+if __name__ == '__main__':
+    survey = MadpyHabitsSurvey()
+    survey.graph_survey()
