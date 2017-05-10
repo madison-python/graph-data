@@ -1,2 +1,10 @@
 py2neo
+pandas
+fire
+
+# wiki-tree
+pywikibot
+
+# madpy-habits
 flask
+wtforms

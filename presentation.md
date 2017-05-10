@@ -7,11 +7,34 @@ author: |
 theme: metropolis
 ---
 
+# Outline
+
+1. What are graph databases?
+2. Neo4j + Cypher
+3. Graph modeling in python with py2neo
+4. Building a simple recommender system
+
 # What's a graph problem?
 
 > Graphs are everywhere, they’re eating the world, and there’s no going back.
 
 ![](refs/graph_databases/social_graph.png)
+
+# Graph databases
+
+![](refs/graph_databases/cover.png)
+
+# Totems
+
+![](totems-game/gameplay.png)
+
+# Recipes
+
+![](totems-game/recipes.png)
+
+# Landscape
+
+![](totems-game/landscape.png)
 
 # Uses of graph databases
 
@@ -23,10 +46,6 @@ theme: metropolis
 - **Investigative journalism**
 - **Research**
 - **Recommendation systems**
-
-# Graph databases
-
-![](refs/graph_databases/cover.png)
 
 # Why use a graph database?
 
@@ -47,6 +66,26 @@ theme: metropolis
 `(emil)<-[:KNOWS]-(jim)-[:KNOWS]->(ian)-[:KNOWS]->(emil)`
 
 ![](refs/graph_databases/mutual_friends.png)
+
+# OrientDB
+
+```SQL
+SELECT *
+FROM Employee A, City B
+WHERE A.city = B.id
+AND B.name = 'Rome'
+```
+
+```SQL
+-- OrientDB SQL
+SELECT * FROM Employee WHERE city.name = 'Rome'
+```
+
+```
+// cypher
+MATCH (e:Employee) -[:LIVES_IN]-> (:City {name: 'Rome'})
+RETURN e
+```
 
 # Cypher variables
 
@@ -72,8 +111,8 @@ theme: metropolis
 
 ```
 MATCH (a:Person {name:'Jim'}),
-  (a)-[:KNOWS]->(b)-[:KNOWS]->(c),
-  (a)-[:KNOWS]->(c)
+      (a)-[:KNOWS]->(b)-[:KNOWS]->(c),
+      (a)-[:KNOWS]->(c)
 RETURN b, c
 ```
 
@@ -86,7 +125,21 @@ $ neo4j start
 # login and set password
 # record password somewhere
 $ export NEO4J_PASSWORD=gefilte-fish
-$ echo $NEO4J_PASSWORD > neo4j-password.txt
+```
+
+# Basic Cypher commands
+
+```
+// create a single node
+CREATE (pierce:Pythonista {screen_name: 'pedmiston'})
+```
+
+```
+// create nodes and relationships
+MATCH (pierce:Pythonista {screen_name: 'pedmiston'})
+CREATE (dan:Pythonista {screen_name: 'dwieeb'}),
+       (madpy:Meetup {topic: 'python'}),
+       (pierce) -[:ORGANIZES]-> (madpy) <-[:ORGANIZES]- (dan)
 ```
 
 # Getting data into Neo4j
@@ -95,7 +148,7 @@ $ echo $NEO4J_PASSWORD > neo4j-password.txt
 2. Load plaintext data with [`LOAD CSV`](https://neo4j.com/developer/guide-importing-data-and-etl/) or `neo4j-import`.
 3. Build the data in python with [`py2neo`](http://py2neo.org/v3/).
 
-# py2neo.Node
+# Creating a node
 
 ```python
 from os import environ
@@ -106,7 +159,7 @@ me = Node('Person', first_name='Pierce')
 graph.create(me)
 ```
 
-# py2neo.Relationship
+# Creating a relationship
 
 ```python
 from py2neo import Relationship
@@ -121,29 +174,108 @@ graph.create(father_of)  # creates parker node too
 ```python
 import pandas
 
-q_children = """
+q = """
 MATCH (:Person {first_name: 'Pierce'}) -[:FATHER_OF]-> (child)
 RETURN child.first_name AS first_name
 """
-children = pandas.DataFrame(graph.data(q_children))
+children = pandas.DataFrame(graph.data(q))
 assert len(children) == 1, 'whoops!'
 ```
 
 # Wikipedia
 
-# Totems
+![](wiki-tree/brd-editing-strategy.png)
 
-![](totems-game/gameplay.png)
+# pywikibot
 
-# Recipes
+```python
+# user-config.py
+family = 'wikipedia'
+mylang = 'en'
+```
 
-![](totems-game/recipes.png)
+```python
+import pywikibot
+import pandas
 
-# The Panama papers
+def get_revisions(title):
+    site = pywikibot.Site('en', 'wikipedia')
+    page = pywikibot.Page(site, title)
+    revisions = page.revisions(content=False)
+    records = [revision.__dict__ for revision in revisions]
+    table = pandas.DataFrame.from_records(records)
+    table.insert(0, 'title', title)
+    table.rename(columns={'_sha1': 'sha1', '_parent_id': 'parent_id'},
+                 inplace=True)
+    return table
+```
 
-# TrumpWorld
+# Nodes for each version
 
-# You might also like...
+```python
+revisons = get_revisions('Splendid fairywren')
+
+# Create nodes for every version of the article
+texts = {sha1: Node('Wikitext', sha1=sha1)
+         for sha1 in revisions.sha1.unique()}
+```
+
+# Map revids to sha1s
+
+```python
+# Create a dict of revid -> sha1
+sha1s = (revisions[['revid', 'sha1']]
+                  .set_index('revid')
+                  .squeeze()  # single column DataFrame -> Series
+                  .to_dict()) # Series.to_dict() -> {index: value}
+```
+
+# Creating edits as relationships
+
+```python
+for rev in revisions.itertuples():
+  # ...
+  child = texts[rev.sha1]
+  parent_sha1 = sha1s[rev.parent_id]
+  parent = texts[parent_sha1]
+  edit = Relationship(parent, 'EDIT', child)
+  edits.append(edit)
+```
+
+# Demo Wikipedia
+
+```bash
+$ ./wikitree.py 'Splendid fairywren'
+```
+
+# Making a simple python package
+
+```
+.
+├── google_survey
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── all.py
+│   ├── questions.py
+│   ├── responses.py
+│   ├── css.py
+│   └── tidy.py
+└──  setup.py
+```
+
+```python
+# setup.py
+from setuptools import setup
+
+setup(
+    name='google_survey',
+    packages=['google_survey'],
+)
+```
+
+```
+$ pip install -e git+git://github.com/madison-python/google-survey.git#egg=google_survey
+```
 
 # Getting the survey responses
 

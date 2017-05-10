@@ -8,8 +8,19 @@ import fire
 from py2neo import Graph, Node, Relationship, Subgraph
 
 
+def graph_article(title):
+    """Load the revision history of a Wikipedia article into a Neo4j graph db.
+
+    Args:
+        title: The name or slug of an English Wikipedia article.
+    """
+    revisions = get_revisions(title)
+    graph_revisions(revisions)
+
+
 def get_revisions(title):
-    page = get_wiki_page(title)
+    site = pywikibot.Site('en', 'wikipedia')
+    page = pywikibot.Page(site, title)
     revisions = page.revisions(content=False)
     records = [revision.__dict__ for revision in revisions]
     table = pandas.DataFrame.from_records(records)
@@ -17,12 +28,6 @@ def get_revisions(title):
     table.rename(columns={'_sha1': 'sha1', '_parent_id': 'parent_id'},
                  inplace=True)
     return table
-
-
-def get_wiki_page(title):
-    site = pywikibot.Site('en', 'wikipedia')
-    page = pywikibot.Page(site, title)
-    return page
 
 
 def graph_revisions(revisions):
@@ -78,18 +83,5 @@ class ParentRevisionNotFound(Exception):
     """The parent revision was not found but it should have been."""
 
 
-class WikiTree:
-    """A simple CLI for loading article revision histories into Neo4j."""
-    def download(self, title, output=None):
-        """Download the revisions for an article."""
-        revisions = get_revisions(title)
-        revisions.to_csv(output or stdout, index=False)
-
-    def graph(self, title, open_after=False):
-        """Load the revisions for an article into a graph database."""
-        revisions = get_revisions(title)
-        graph_revisions(revisions)
-
-
 if __name__ == '__main__':
-    fire.Fire(WikiTree())
+    fire.Fire(graph_article)
