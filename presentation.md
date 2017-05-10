@@ -144,3 +144,49 @@ assert len(children) == 1, 'whoops!'
 # TrumpWorld
 
 # You might also like...
+
+# Getting the survey responses
+
+```yaml
+---
+# contents of madpy-survey-info.yaml
+sheet_name: madpy-habits-responses
+creds_file: madpy-service-account-key.json
+survey_url: https://docs.google.com/forms/d/e/1FAIpQLScnwwfdLN_iUNaZEyks62Y_2DO8qADWGZU0ykVoWSRcnDSkfA/viewform
+```
+
+```python
+import google_survey
+responses = google_survey.get('madpy-habits-survey.yaml')
+# Set question_id as index to allow queries like: responses.ix['q0']
+responses.set_index('question_id', inplace=True)
+```
+
+# Create nodes for all Madpy Pythonistas
+
+```python
+pythonistas = {}
+screen_names = responses.ix['q0', ['person_id', 'response']]
+for _, (person_id, screen_name) in screen_names.iterrows():
+    pythonistas[person_id] = Node('Pythonista', screen_name=screen_name)
+```
+
+# Behold: dict comprehension
+
+```python
+pythonistas = {person_id: Node('Pythonista', screen_name=screen_name)
+               for _, (person_id, screen_name) in
+               responses.ix['q0', ['person_id', 'response']].iterrows()}
+```
+
+# Create nodes for editors and relationships for editor preferences
+
+```python
+editors = {}
+editor_prefs = []
+editor_responses = responses.ix['q1', ['person', 'response']]
+for _, (person_id, editor) in editor_responses.iterrows():
+    pythonista = pythonistas[person_id]
+    editor = editors.setdefault(editor, Node('Editor', name=editor))
+    editor_prefs.append(Relationship(pythonista, 'TYPES_IN', editor))
+```
