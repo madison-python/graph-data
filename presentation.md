@@ -49,6 +49,21 @@ theme: metropolis
 
 ![](totems-game/landscape.png)
 
+# The Panama Papers
+
+- [ICIJ](https://panamapapers.icij.org/)
+- [Neo4j Blog](https://neo4j.com/blog/analyzing-panama-papers-neo4j/)
+- [Linkurious](https://linkurio.us/blog/panama-papers-how-linkurious-enables-icij-to-investigate-the-massive-mossack-fonseca-leaks/)
+
+![](refs/panama-papers/dump-sizes.png)
+
+# TrumpWorld
+
+- [BuzzFeed](https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld?utm_term=.samWBDAzW#.jdmamByja)
+- [Neo4j Blog](https://neo4j.com/blog/buzzfeed-trumpworld-dataset-neo4j/)
+
+![](refs/trump_world/big_graph.jpg)
+
 # Why use a graph database?
 
 - Performance (index free adjacency)
@@ -265,13 +280,16 @@ for rev in revisions.itertuples():
 # wikitree.py demo
 
 ```bash
-$ ./wikitree.py 'Splendid fairywren'
+$ ./wikitree.py graph 'Splendid fairywren'
 ```
 
 ```
-MATCH (root:Wikitext)-[:EDIT*..50]->(edits:Wikitext)
-WHERE NOT (:Wikitext)-[:EDIT]->(root)
-RETURN root, edits
+MATCH (article:Article {title: 'Splendid fairywren'}),
+      (root:Revision {type: 'root'}) -[:TO]-> (article),
+      (root) -[:CONTAINS]-> (first:Wikitext),
+      (root) -[:NEXT*..50]-> (revision:Revision),
+      (revision) -[:CONTAINS]-> (subsequent:Wikitext)
+RETURN root, first, subsequent
 ```
 
 # [google_survey](https://github.com/madison-python/google-survey.git)
