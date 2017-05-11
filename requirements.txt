@@ -6,5 +6,5 @@ fire
 pywikibot
 
 # madpy-habits
--e git://github.com/madison-python/google-survey.git
+-e git://github.com/madison-python/google-survey.git#egg=google_survey
 flask
