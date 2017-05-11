@@ -1,2 +1,5 @@
 presentation.pdf: presentation.md
-	pandoc -t beamer --template theme/beamer.tex -o $@ $<
+	pandoc \
+		-f markdown-implicit_figures -t beamer -o $@ \
+		--template theme/beamer.tex \
+		$<
