@@ -9,8 +9,8 @@ theme: metropolis
 
 # Outline
 
-1. What are graph databases?
-2. Neo4j + Cypher
+1. Graph problems and graph databases
+2. Neo4j + Cypher basics
 3. Graph modeling in python with py2neo
 4. Building a simple recommender system
 
@@ -139,7 +139,8 @@ CREATE (pierce:Pythonista {screen_name: 'pedmiston'})
 MATCH (pierce:Pythonista {screen_name: 'pedmiston'})
 CREATE (dan:Pythonista {screen_name: 'dwieeb'}),
        (madpy:Meetup {topic: 'python'}),
-       (pierce) -[:ORGANIZES]-> (madpy) <-[:ORGANIZES]- (dan)
+       (pierce) -[:ORGANIZES]-> (madpy),
+       (dan) -[:ORGANIZES]-> (madpy)
 ```
 
 # Getting data into Neo4j
@@ -166,7 +167,7 @@ from py2neo import Relationship
 
 parker = Node('Person', first_name='Parker')
 father_of = Relationship(me, 'FATHER_OF', parker)
-graph.create(father_of)  # creates parker node too
+graph.create(father_of)  # creates node for Parker too
 ```
 
 # Graph queries
@@ -175,7 +176,8 @@ graph.create(father_of)  # creates parker node too
 import pandas
 
 q = """
-MATCH (:Person {first_name: 'Pierce'}) -[:FATHER_OF]-> (child)
+MATCH (me:Person {first_name: 'Pierce'}),
+      (me) -[:FATHER_OF]-> (child)
 RETURN child.first_name AS first_name
 """
 children = pandas.DataFrame(graph.data(q))
@@ -187,12 +189,6 @@ assert len(children) == 1, 'whoops!'
 ![](wiki-tree/brd-editing-strategy.png)
 
 # pywikibot
-
-```python
-# user-config.py
-family = 'wikipedia'
-mylang = 'en'
-```
 
 ```python
 import pywikibot
@@ -226,8 +222,8 @@ texts = {sha1: Node('Wikitext', sha1=sha1)
 # Create a dict of revid -> sha1
 sha1s = (revisions[['revid', 'sha1']]
                   .set_index('revid')
-                  .squeeze()  # single column DataFrame -> Series
-                  .to_dict()) # Series.to_dict() -> {index: value}
+                  .squeeze()
+                  .to_dict())
 ```
 
 # Creating edits as relationships
@@ -251,16 +247,15 @@ $ ./wikitree.py 'Splendid fairywren'
 # Making a simple python package
 
 ```
-.
-├── google_survey
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── all.py
-│   ├── questions.py
-│   ├── responses.py
-│   ├── css.py
-│   └── tidy.py
-└──  setup.py
+setup.py
+google_survey/
+    __init__.py
+    __main__.py
+    responses.py
+    tidy.py
+    questions.py
+    css.py
+    all.py
 ```
 
 ```python
