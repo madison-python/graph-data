@@ -21,6 +21,8 @@ def get_revisions(title, limit=None):
     revisions = page.revisions(content=False)
     records = [next(revisions).__dict__ for _ in range(limit)]
     table = pandas.DataFrame.from_records(records)
+    table.sort_values('timestamp', inplace=True)
+    table.reset_index(drop=True)
     table.insert(0, 'title', title)
     table.rename(columns=lambda x: x.lstrip('_'), inplace=True)
     logger.info('Retrieved {} revisions for article "{}"'.format(
@@ -34,63 +36,70 @@ def get_page(title):
     return page
 
 
-def graph_revisions(revisions):
+def graph_revisions(table, delete=False):
     graph = Graph(password=environ['NEO4J_PASSWORD'])
 
-    # Create nodes for every article
-    articles = {title: Node('Article', title=title)
-                for title in revisions.title.unique()}
+    if delete:
+        graph.run('MATCH (n) DETACH DELETE n')
 
-    # Create nodes for every version of the article
-    texts = {sha1: Node('Wikitext', sha1=sha1)
-             for sha1 in revisions.sha1.unique()}
+    # Create nodes for every article
+    assert len(table.title.unique()) == 1
+    article = Node('Article', title=table.title.iloc[0])
+
+    # Create nodes for every revision
+    revisions = {revid: Node('Revision', revid=int(revid))
+                 for revid in table.revid.unique()}
+
+    # Create nodes for every text version
+    wikitexts = {sha1: Node('Wikitext', sha1=sha1)
+                 for sha1 in table.sha1.unique()}
 
     # Create a dict of revid -> sha1
-    sha1s = (revisions[['revid', 'sha1']]
-                      .set_index('revid')
-                      .squeeze()  # single column DataFrame -> Series
-                      .to_dict())
+    sha1s = (table[['revid', 'sha1']]
+                  .set_index('revid')
+                  .squeeze()  # single column DataFrame -> Series
+                  .to_dict())
 
     # Create relationships for every edit to the article
     first_edit = True
-    edits, versions = [], []
-    for rev in revisions.itertuples():
+    relationships = []
+    for rev in table.itertuples():
         if rev.parent_id == 0:
             # skip revisions without parents
             continue
 
-        parent_sha1 = sha1s.get(rev.parent_id)
-        if parent_sha1 is None:
-            logger.info('Parent revision #{} not found'.format(rev.parent_id))
-            parent_sha1 = hashlib.sha1(str(rev.parent_id).encode()).hexdigest()
-            sha1s[rev.parent_id] = parent_sha1
-            texts[parent_sha1] = Node('Wikitext', sha1=parent_sha1)
+        child_rev = revisions[rev.revid]
+        child_text = wikitexts[rev.sha1]
 
-        child = texts[rev.sha1]
-        parent = texts[parent_sha1]
+        parent_rev = revisions[rev.parent_id]
+        parent_sha1 = sha1s[rev.parent_id]
+        parent_text = wikitexts[parent_sha1]
 
-        # A hacky way to ensure it's easy to find the root node
         if first_edit:
-            parent['type'] = 'root'
+            parent_rev['type'] = 'root'
             first_edit = False
+            relationships.extend([
+                Relationship(parent_rev, 'CONTAINS', parent_text),
+                Relationship(parent_rev, 'TO', article),
+            ])
 
-        edit = Relationship(parent, 'EDIT', child)
-        edits.append(edit)
-
-        article = articles[rev.title]
-        version = Relationship(article, 'VERSION', child)
-        versions.append(version)
+        relationships.extend([
+            Relationship(child_text, 'VERSION', article),
+            Relationship(child_rev, 'TO', article),
+            Relationship(child_rev, 'CONTAINS', child_text),
+            Relationship(parent_rev, 'NEXT', child_rev),
+            Relationship(parent_text, 'EDIT', child_text)
+        ])
 
 
     # Smells!
-    for text in texts.values():
-        graph.merge(text, label='Wikitext')
-    for article in texts.values():
-        graph.merge(article, label='Article')
-    for edit in edits:
-        graph.merge(edit, label='Wikitext')
-    for version in versions:
-        graph.merge(version, label='Article')
+    graph.merge(article, label='Article')
+    for revision in revisions.values():
+        graph.merge(revision, label='Revision')
+    for wikitext in wikitexts.values():
+        graph.merge(wikitext, label='Wikitext')
+    for relationship in relationships:
+        graph.merge(relationship)
 
 
 class ParentRevisionNotFound(Exception):
@@ -98,7 +107,7 @@ class ParentRevisionNotFound(Exception):
 
 
 class WikiTree:
-    def graph(self, title, limit=None, verbose=False):
+    def graph(self, title, delete=False, limit=None, verbose=False):
         """Graph the revision history of a Wikipedia article.
 
         Args:
@@ -110,7 +119,7 @@ class WikiTree:
         if verbose:
             logger.setLevel(logging.INFO)
         revisions = get_revisions(title, limit=limit)
-        graph_revisions(revisions)
+        graph_revisions(revisions, delete=delete)
 
     def count(self, title):
         page = get_page(title)

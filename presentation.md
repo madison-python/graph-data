@@ -265,13 +265,16 @@ for rev in revisions.itertuples():
 # wikitree.py demo
 
 ```bash
-$ ./wikitree.py 'Splendid fairywren'
+$ ./wikitree.py graph 'Splendid fairywren'
 ```
 
 ```
-MATCH (root:Wikitext)-[:EDIT*..50]->(edits:Wikitext)
-WHERE NOT (:Wikitext)-[:EDIT]->(root)
-RETURN root, edits
+MATCH (article:Article {title: 'Splendid fairywren'}),
+      (root:Revision {type: 'root'}) -[:TO]-> (article),
+      (root) -[:CONTAINS]-> (first:Wikitext),
+      (root) -[:NEXT*..50]-> (revision:Revision),
+      (revision) -[:CONTAINS]-> (subsequent:Wikitext)
+RETURN root, first, subsequent
 ```
 
 # [google_survey](https://github.com/madison-python/google-survey.git)
