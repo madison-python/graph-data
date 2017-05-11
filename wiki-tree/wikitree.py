@@ -19,14 +19,14 @@ def graph_article(title):
 
 
 def get_revisions(title):
+    """Retrieve all versions of a Wikipedia article."""
     site = pywikibot.Site('en', 'wikipedia')
     page = pywikibot.Page(site, title)
     revisions = page.revisions(content=False)
     records = [revision.__dict__ for revision in revisions]
     table = pandas.DataFrame.from_records(records)
     table.insert(0, 'title', title)
-    table.rename(columns={'_sha1': 'sha1', '_parent_id': 'parent_id'},
-                 inplace=True)
+    table.rename(columns=lambda x: x.lstrip('_'), inplace=True)
     return table
 
 

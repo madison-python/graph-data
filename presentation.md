@@ -24,6 +24,17 @@ theme: metropolis
 
 ![](refs/graph_databases/cover.png)
 
+# Graph problems
+
+- Social networks
+- Search engines
+- Geospatial data
+- Meta management
+- [Fraud detection](https://neo4j.com/graphgist/9d627127-003b-411a-b3ce-f8d3970c2afa)
+- _Investigative journalism_
+- _Recommendation systems_
+- _Science?_
+
 # Totems
 
 ![](totems-game/gameplay.png)
@@ -35,17 +46,6 @@ theme: metropolis
 # Landscape
 
 ![](totems-game/landscape.png)
-
-# Uses of graph databases
-
-- Social networks
-- Search engines
-- Geospatial data
-- Meta management
-- [Fraud detection](https://neo4j.com/graphgist/9d627127-003b-411a-b3ce-f8d3970c2afa)
-- **Investigative journalism**
-- **Research**
-- **Recommendation systems**
 
 # Why use a graph database?
 
@@ -69,22 +69,23 @@ theme: metropolis
 
 # OrientDB
 
-```SQL
+```sql
+-- SQL
 SELECT *
 FROM Employee A, City B
 WHERE A.city = B.id
 AND B.name = 'Rome'
 ```
 
-```SQL
+```sql
 -- OrientDB SQL
 SELECT * FROM Employee WHERE city.name = 'Rome'
 ```
 
 ```
 // cypher
-MATCH (e:Employee) -[:LIVES_IN]-> (:City {name: 'Rome'})
-RETURN e
+MATCH (A:Employee) -[:LIVES_IN]-> (B:City {name: 'Rome'})
+RETURN A, B
 ```
 
 # Cypher variables
@@ -103,6 +104,26 @@ RETURN e
   <-[:KNOWS]-(jim:Person {name: 'Jim'})
   -[:KNOWS]->(ian:Person {name: 'Ian'})
   -[:KNOWS]->(emil)
+```
+
+# Cypher summary
+
+## Nodes and edges
+
+- Nodes: `(var:Label {property: value})`
+- Edges: `-[var:LABEL {property: value}]->`
+
+## [Clauses](https://neo4j.com/docs/developer-manual/current/cypher/clauses/)
+
+```
+MATCH, RETURN, CREATE, MERGE, DELETE
+```
+
+## Subclauses
+
+```
+MATCH + WHERE
+RETURN + ORDER BY (+ LIMIT)
 ```
 
 # Cypher queries
@@ -145,7 +166,7 @@ CREATE (dan:Pythonista {screen_name: 'dwieeb'}),
 
 # Getting data into Neo4j
 
-1. Enter data manually with the [`CREATE`](https://neo4j.com/docs/developer-manual/current/cypher/clauses/create/) clause.
+1. Enter data manually with the [`CREATE`](https://neo4j.com/docs/developer-manual/current/cypher/clauses/create/) clause and cypher scripts.
 2. Load plaintext data with [`LOAD CSV`](https://neo4j.com/developer/guide-importing-data-and-etl/) or `neo4j-import`.
 3. Build the data in python with [`py2neo`](http://py2neo.org/v3/).
 
@@ -165,7 +186,7 @@ graph.create(me)
 ```python
 from py2neo import Relationship
 
-parker = Node('Person', first_name='Parker')
+parker = Node('Parent', first_name='Parker')
 father_of = Relationship(me, 'FATHER_OF', parker)
 graph.create(father_of)  # creates node for Parker too
 ```
@@ -178,13 +199,13 @@ import pandas
 q = """
 MATCH (me:Person {first_name: 'Pierce'}),
       (me) -[:FATHER_OF]-> (child)
-RETURN child.first_name AS first_name
+RETURN child
 """
 children = pandas.DataFrame(graph.data(q))
 assert len(children) == 1, 'whoops!'
 ```
 
-# Wikipedia
+# Wikipedia editing cycle as an evolutionary strategy
 
 ![](wiki-tree/brd-editing-strategy.png)
 
@@ -195,13 +216,14 @@ import pywikibot
 import pandas
 
 def get_revisions(title):
+    """Retrieve all versions of a Wikipedia article."""
     site = pywikibot.Site('en', 'wikipedia')
     page = pywikibot.Page(site, title)
     revisions = page.revisions(content=False)
     records = [revision.__dict__ for revision in revisions]
     table = pandas.DataFrame.from_records(records)
     table.insert(0, 'title', title)
-    table.rename(columns={'_sha1': 'sha1', '_parent_id': 'parent_id'},
+    table.rename(columns=lambda x: x.lstrip('_'),
                  inplace=True)
     return table
 ```
@@ -209,9 +231,8 @@ def get_revisions(title):
 # Nodes for each version
 
 ```python
+# Create nodes for every version of an article
 revisons = get_revisions('Splendid fairywren')
-
-# Create nodes for every version of the article
 texts = {sha1: Node('Wikitext', sha1=sha1)
          for sha1 in revisions.sha1.unique()}
 ```
@@ -229,8 +250,9 @@ sha1s = (revisions[['revid', 'sha1']]
 # Creating edits as relationships
 
 ```python
+edits = []
 for rev in revisions.itertuples():
-  # ...
+  # Each rev has a revid, a sha1, and a parent revid
   child = texts[rev.sha1]
   parent_sha1 = sha1s[rev.parent_id]
   parent = texts[parent_sha1]
@@ -238,41 +260,55 @@ for rev in revisions.itertuples():
   edits.append(edit)
 ```
 
-# Demo Wikipedia
+# wikitree.py demo
 
 ```bash
 $ ./wikitree.py 'Splendid fairywren'
 ```
 
-# Making a simple python package
+```
+MATCH (root:Wikitext)-[:EDIT*..50]->(edits:Wikitext)
+WHERE NOT (:Wikitext)-[:EDIT]->(root)
+RETURN root, edits
+```
+
+# [google_survey](https://github.com/madison-python/google-survey.git)
 
 ```
-setup.py
+setup.py         # installable with pip
 google_survey/
-    __init__.py
-    __main__.py
-    responses.py
-    tidy.py
-    questions.py
-    css.py
-    all.py
+  __init__.py    # makes this a package
+  __main__.py    # run with "python -m google_survey"
+  responses.py   # download survey responses
+  tidy.py        # tidy survey responses
+  questions.py   # scrape question data
+  css.py         # google forms css selectors
+  all.py         # combine responses and questions
 ```
+
+# setup.py
 
 ```python
-# setup.py
 from setuptools import setup
 
 setup(
     name='google_survey',
     packages=['google_survey'],
+    install_requires=[
+        'gspread', 'oauth2client', 'pandas', 'fire',
+    ],
 )
 ```
 
-```
-$ pip install -e git+git://github.com/madison-python/google-survey.git#egg=google_survey
+# Installing with pip
+
+```bash
+$ virtualenv --python python3 ~/.venvs/madpy
+$ source ~/.venvs/madpy/bin/activate
+(madpy)$ pip install -e git+git://github.com/madison-python/google-survey.git#egg=google_survey
 ```
 
-# Getting the survey responses
+# Getting survey responses
 
 ```yaml
 ---
@@ -283,37 +319,70 @@ survey_url: https://docs.google.com/forms/d/e/1FAIpQLScnwwfdLN_iUNaZEyks62Y_2DO8
 ```
 
 ```python
+# using google survey in scripts
 import google_survey
 responses = google_survey.get('madpy-habits-survey.yaml')
-# Set question_id as index to allow queries like: responses.ix['q0']
+```
+
+# Set index to filter by question
+
+```python
+# Set question_id as index to allow
+# queries like: responses.ix['q0']
 responses.set_index('question_id', inplace=True)
 ```
 
 # Create nodes for all Madpy Pythonistas
 
+> Q0. What's your screen name?
+
 ```python
 pythonistas = {}
 screen_names = responses.ix['q0', ['person_id', 'response']]
 for _, (person_id, screen_name) in screen_names.iterrows():
-    pythonistas[person_id] = Node('Pythonista', screen_name=screen_name)
+    pythonista = Node('Pythonista', screen_name=screen_name)
+    pythonistas[person_id] = pythonista
 ```
 
-# Behold: dict comprehension
+# Dict comprehension
 
 ```python
-pythonistas = {person_id: Node('Pythonista', screen_name=screen_name)
-               for _, (person_id, screen_name) in
-               responses.ix['q0', ['person_id', 'response']].iterrows()}
+pythonistas = {
+  person_id: Node('Pythonista', screen_name=screen_name)
+  for _, (person_id, screen_name) in
+  responses.ix['q0', ['person_id', 'response']].iterrows()
+}
 ```
 
 # Create nodes for editors and relationships for editor preferences
 
+> Q1. You're about to start a new python project. What text editor do you open up?
+
 ```python
 editors = {}
-editor_prefs = []
-editor_responses = responses.ix['q1', ['person', 'response']]
+prefs = []
+responses = responses.ix['q1', ['person', 'response']]
 for _, (person_id, editor) in editor_responses.iterrows():
     pythonista = pythonistas[person_id]
-    editor = editors.setdefault(editor, Node('Editor', name=editor))
-    editor_prefs.append(Relationship(pythonista, 'TYPES_IN', editor))
+    editor = editors.setdefault(editor,
+                                Node('Editor', name=editor))
+    prefs.append(Relationship(pythonista, 'TYPES_IN', editor))
 ```
+
+# Building a recommendation system
+
+```
+MATCH (dan:Pythonista {screen_name: 'dwieeb'}),
+      (dan) -[:LIKES]-> (known_package),
+      (known_package) <-[:LIKES]- (similar_person),
+      (similar_person) -[:LIKES]-> (other_package)
+WHERE NOT (dan) -[:LIKES]-> (other_package)
+RETURN other_package
+```
+
+# End!
+
+Pierce Edmiston  
+pierce.edmiston@gmail.com  
+@pedmistor  
+github.com/pedmiston  

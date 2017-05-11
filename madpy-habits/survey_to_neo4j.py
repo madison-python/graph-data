@@ -19,12 +19,12 @@ class MadpyHabitsSurvey:
         for node in self.pythonistas.values():
             self.graph.merge(node, label='Pythonista')
 
-        self._graph_responses_to_question('q1', 'Editor', 'TYPES_IN')
-        self._graph_responses_to_question('q2', 'Package', 'LIKES')
-        self._graph_responses_to_question('q3', 'VersionControl', 'USES')
-        self._graph_responses_to_question('q4', 'Language', 'KNOWS')
+        self.graph_question('q1', 'Editor', 'TYPES_IN')
+        self.graph_question('q2', 'Package', 'LIKES')
+        self.graph_question('q3', 'VersionControl', 'USES')
+        self.graph_question('q4', 'Language', 'KNOWS')
 
-    def _graph_responses_to_question(self, question_id, node_label,
+    def graph_question(self, question_id, node_label,
                                      relationship_label):
 
         def Response(node_value):
