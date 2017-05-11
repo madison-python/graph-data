@@ -2,8 +2,10 @@
 title: Getting started with graph databases
 author: |
   Pierce Edmiston  
+  pierce.edmiston@gmail.com  
   @pedmistor  
   github.com/pedmiston
+  github.com/madison-python/graph-data
 theme: metropolis
 ---
 
@@ -371,6 +373,8 @@ for _, (person_id, editor) in editor_responses.iterrows():
 
 # Building a recommendation system
 
+> Find people similar to Dan through the packages they both like, and then recommend the packages they like that Dan doesn't like.
+
 ```
 MATCH (dan:Pythonista {screen_name: 'dwieeb'}),
       (dan) -[:LIKES]-> (known_package),
@@ -380,9 +384,65 @@ WHERE NOT (dan) -[:LIKES]-> (other_package)
 RETURN other_package
 ```
 
+# Simple Flask app
+
+```python
+from flask import Flask, request, render_template
+from py2neo import Graph
+
+app = Flask(__name__)
+graph = Graph(password=environ['NEO4J_PASSWORD'])
+
+@app.route('/', methods=['GET', 'POST'])
+def madpy_habits():
+    screen_name = None
+    recommendations = None
+    if request.method == 'POST':
+        screen_name = request.form['screen_name']
+        recommendations = get_recommendations(screen_name)
+    return render_template('you_might_like.html',
+                           screen_name=screen_name,
+                           recommendations=recommendations)
+```
+
+# you_might_like.html
+
+```html
+<h1>Madpy Recommendation Engine</h1>
+
+<form method=POST>
+  Enter your screen name to see your recommendations.<br>
+  <input type="text" name="screen_name">
+  <input type="submit" value="Go"><br>
+</form>
+
+{% if recommendations %}
+  <p><em>{{ screen_name }}</em>, you might also like:</p>
+  {{ recommendations | safe }}
+{% endif %}
+```
+
+# get_recommendations
+
+```python
+def get_recommendations(screen_name):
+    recommendations = pandas.DataFrame(graph.data("""
+    MATCH (member:Pythonista {screen_name: {screen_name}}),
+          (member) -[:LIKES]-> (known_package),
+          (known_package) <-[:LIKES]- (similar_person),
+          (similar_person) -[:LIKES]-> (other_package)
+    WHERE NOT (member) -[:LIKES]-> (other_package)
+    RETURN known_package.name AS known_package,
+           similar_person.screen_name AS similar_person,
+           other_package.name AS recommendation
+    """, screen_name=screen_name))
+    return recommendations.to_html()
+```
+
 # End!
 
 Pierce Edmiston  
 pierce.edmiston@gmail.com  
 @pedmistor  
 github.com/pedmiston  
+github.com/madison-python/graph-data  

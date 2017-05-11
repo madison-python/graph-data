@@ -27,6 +27,8 @@ def madpy_habits():
                    '<a href="bit.ly/madpy-habits-survey">'
                    'bit.ly/madpy-habits-survey</a>')
                    .format(screen_name))
+        except NoRecommendationsFound:
+            flash(("No recommendations for you! That's odd."))
     return render_template('you_might_like.html',
                            screen_name=screen_name,
                            recommendations=recommendations)
@@ -47,10 +49,19 @@ def get_recommendations(screen_name):
            other_package.name AS recommendation
     """, screen_name=screen_name))
 
+    if len(recommendations) == 0:
+        raise NoRecommendations()
+
     # Set column order
     out_col_order = ['known_package', 'similar_person', 'recommendation']
     return recommendations[out_col_order].to_html()
 
 
-class ScreenNameNotFound(Exception):
+class YouMightLikeException(Exception):
+    pass
+
+class ScreenNameNotFound(YouMightLikeException):
+    pass
+
+class NoRecommendationsFound(YouMightLikeException):
     pass
