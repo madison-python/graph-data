@@ -49,6 +49,21 @@ theme: metropolis
 
 ![](totems-game/landscape.png)
 
+# The Panama Papers
+
+- [ICIJ](https://panamapapers.icij.org/)
+- [Neo4j Blog](https://neo4j.com/blog/analyzing-panama-papers-neo4j/)
+- [Linkurious](https://linkurio.us/blog/panama-papers-how-linkurious-enables-icij-to-investigate-the-massive-mossack-fonseca-leaks/)
+
+![](refs/panama-papers/dump-sizes.png)
+
+# TrumpWorld
+
+- [BuzzFeed](https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld?utm_term=.samWBDAzW#.jdmamByja)
+- [Neo4j Blog](https://neo4j.com/blog/buzzfeed-trumpworld-dataset-neo4j/)
+
+![](refs/trump_world/big_graph.jpg)
+
 # Why use a graph database?
 
 - Performance (index free adjacency)
